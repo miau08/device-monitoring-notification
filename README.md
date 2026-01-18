@@ -99,7 +99,7 @@ Beim Anlegen einer Automation aus diesem Blueprint müssen folgende Eingaben ges
 
 ## Abbildung:
 
-![Blueprint Maske](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/Blueprint%20Maske.png)
+![Blueprint Trockner](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/blueprint_trockner.png)
 
 Dropdown-Menü erstellen (Helfer)
 ![Dropdown-Menü erstellen](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/Dropdown-Menue%20erstellen.png)
