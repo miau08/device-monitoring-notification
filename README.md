@@ -102,6 +102,7 @@ Beim Anlegen einer Automation aus diesem Blueprint müssen folgende Eingaben ges
 ![Blueprint Trockner](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/blueprint_trockner.png)
 
 Dropdown-Menü erstellen (Helfer)
+
 ![Dropdown-Menü erstellen](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/Dropdown-Menue%20erstellen.png)
 
 ---
@@ -165,12 +166,18 @@ https://gist.github.com/sbyx/6d8344d3575c9865657ac51915684696
 
 # Typische Einstellwerte
 z.B. Wärmepumpentrockner:
+
 ![Wärmepumpentrockner Leistung](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/waermepumpentrockner_leistung.png)
+
 Einstellwerte:
+
 ![Blueprint Trockner](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/blueprint_trockner.png)
 
 z.B. Waschmaschine:
+
 ![Waschmaschine Leistung](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/waschmaschine_leistung.png)
+
 Einstellwerte:
+
 ![Blueprint Waschmaschine](https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/blueprint_waschmaschine.png)
 
