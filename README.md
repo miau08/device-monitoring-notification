@@ -187,12 +187,14 @@ Einstellwerte:
 
 In configuration.yaml z.B. folgendes für eine Benachrichtigungsgruppe eintragen:
 
+```
 notify:
   - platform: group
     name: notify_home
     services:
       - service: mobile_app_21081111rg 
       - service: alexa_media_echo_dot
+```
 
 Achtung! Das Mobiltelefon mit der home assistant App und die Alexa Geräte müssen exakt wie vorhanden (aber ohne notify.) benannt werden!
 Am besten funktioniert das unter Entwicklerwerkzeuge - Aktionen. Dann notify eintragen und das Gerät in der Liste suchen.
