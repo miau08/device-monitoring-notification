@@ -1,0 +1,171 @@
+blueprint:
+  name: device-monitoring-notification
+  description: >
+    Überwacht ein Gerät anhand eines Leistungssensors. Erkennt Start
+    und Ende zuverlässig, auch nach Home-Assistant-Neustarts. Nutzt einen
+    Status-Helfer als interne Zustandsmaschine. Ideal für Waschmaschine,
+    Trockner, Geschirrspüler.
+  domain: automation
+  source_url: https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/device-monitoring-notification.yaml
+input:
+  power_sensor:
+    name: Leistungssensor
+    description: Sensor, der die aktuelle Leistung des Geräts misst.
+    selector:
+      entity:
+        domain: sensor
+  status_helper:
+    name: Status-Helfer (input_select)
+    description: |
+      input_select mit den Optionen: idle, running, finished
+    selector:
+      entity:
+        domain: input_select
+  start_threshold:
+    name: Start-Schwelle (Watt)
+    default: 8
+    selector:
+      number:
+        min: 1
+        max: 200
+        step: 1
+        unit_of_measurement: W
+  start_duration:
+    name: Start-Hysterese (Minuten)
+    default: 2
+    selector:
+      number:
+        min: 0.25
+        max: 10
+        step: 0.25
+        unit_of_measurement: min
+  finish_threshold:
+    name: Fertig-Schwelle (Watt)
+    default: 5
+    selector:
+      number:
+        min: 1
+        max: 200
+        step: 1
+        unit_of_measurement: W
+  finish_duration:
+    name: Fertig-Hysterese (Minuten)
+    default: 3
+    selector:
+      number:
+        min: 0.25
+        max: 10
+        step: 0.25
+        unit_of_measurement: min
+  start_actions:
+    name: Aktionen bei Start
+    description: Wird ausgeführt, wenn das Gerät sicher gestartet ist.
+    default: []
+    selector:
+      action: {}
+  finish_actions:
+    name: Aktionen bei Fertig
+    description: Wird ausgeführt, wenn das Gerät sicher fertig ist.
+    default: []
+    selector:
+      action: {}
+variables:
+  status_helper_entity: status_helper
+trigger:
+  - platform: homeassistant
+    event: start
+    id: ha_start
+  - platform: numeric_state
+    entity_id: power_sensor
+    above: start_threshold
+    for:
+      minutes: start_duration
+    id: start_detected
+  - platform: numeric_state
+    entity_id: power_sensor
+    below: finish_threshold
+    for:
+      minutes: finish_duration
+    id: finish_detected
+  - platform: state
+    entity_id: status_helper
+    to: finished
+    for: 00:02:00
+    id: reset_idle
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: ha_start
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: power_sensor
+                    above: start_threshold
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: status_helper
+                    data:
+                      option: running
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: power_sensor
+                    below: finish_threshold
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: status_helper
+                    data:
+                      option: finished
+            default:
+              - service: input_select.select_option
+                target:
+                  entity_id: status_helper
+                data:
+                  option: idle
+      - conditions:
+          - condition: trigger
+            id: start_detected
+          - condition: state
+            entity_id: status_helper
+            state: idle
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: status_helper
+            data:
+              option: running
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ start_actions | length > 0 }}"
+                sequence: start_actions
+      - conditions:
+          - condition: trigger
+            id: finish_detected
+          - condition: state
+            entity_id: status_helper
+            state: running
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: status_helper
+            data:
+              option: finished
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ finish_actions | length > 0 }}"
+                sequence: finish_actions
+      - conditions:
+          - condition: trigger
+            id: reset_idle
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: status_helper
+            data:
+              option: idle
+mode: restart
