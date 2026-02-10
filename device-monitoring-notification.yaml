@@ -1,24 +1,23 @@
 blueprint:
-  name: Device Monitoring Notification
+  name: Device Monitoring Notification (Robust v2)
   description: >
-    Überwacht ein Gerät anhand eines Leistungssensors. Erkennt Start und Ende
-    zuverlässig, auch nach Home-Assistant-Neustarts. Nutzt einen Status-Helfer
-    als interne Zustandsmaschine. Ideal für Waschmaschine, Trockner, Geschirrspüler.
+    Extrem robuster Blueprint zur Überwachung von Geräten wie Waschmaschine,
+    Trockner oder Geschirrspüler. Erkennt Start und Ende zuverlässig – auch bei
+    schnellen Neustarts, Sensor-Sprüngen und Home-Assistant-Neustarts.
+    Nutzt eine interne Statusmaschine (input_select).
+
   domain: automation
-  source_url: https://raw.githubusercontent.com/miau08/device-monitoring-notification/main/device-monitoring-notification.yaml
 
   input:
     power_sensor:
       name: Leistungssensor
-      description: Sensor, der die aktuelle Leistung des Geräts misst.
       selector:
         entity:
           domain: sensor
 
     status_helper:
       name: Status-Helfer (input_select)
-      description: >
-        input_select mit den Optionen: idle, running, finished
+      description: Muss die Optionen idle, running, finished enthalten.
       selector:
         entity:
           domain: input_select
@@ -65,20 +64,15 @@ blueprint:
 
     start_actions:
       name: Aktionen bei Start
-      description: Wird ausgeführt, wenn das Gerät sicher gestartet ist.
       default: []
       selector:
         action: {}
 
     finish_actions:
       name: Aktionen bei Fertig
-      description: Wird ausgeführt, wenn das Gerät sicher fertig ist.
       default: []
       selector:
         action: {}
-
-variables:
-  status_helper_entity: !input status_helper
 
 trigger:
   - platform: homeassistant
@@ -92,23 +86,16 @@ trigger:
       minutes: !input start_duration
     id: start_detected
 
-  - platform: numeric_state
-    entity_id: !input power_sensor
-    below: !input finish_threshold
-    for:
-      minutes: !input finish_duration
-    id: finish_detected
-
-  - platform: state
-    entity_id: !input status_helper
-    to: finished
-    for: "00:02:00"
-    id: reset_idle
+variables:
+  status: !input status_helper
+  power: !input power_sensor
 
 action:
   - choose:
 
-      # --- HA Neustart: Status rekonstruieren ---
+      # ---------------------------------------------------------
+      # HA Neustart: Status rekonstruieren
+      # ---------------------------------------------------------
       - conditions:
           - condition: trigger
             id: ha_start
@@ -120,10 +107,8 @@ action:
                     above: !input start_threshold
                 sequence:
                   - service: input_select.select_option
-                    target:
-                      entity_id: !input status_helper
-                    data:
-                      option: running
+                    target: { entity_id: !input status_helper }
+                    data: { option: running }
 
               - conditions:
                   - condition: numeric_state
@@ -131,19 +116,17 @@ action:
                     below: !input finish_threshold
                 sequence:
                   - service: input_select.select_option
-                    target:
-                      entity_id: !input status_helper
-                    data:
-                      option: finished
+                    target: { entity_id: !input status_helper }
+                    data: { option: finished }
 
             default:
               - service: input_select.select_option
-                target:
-                  entity_id: !input status_helper
-                data:
-                  option: idle
+                target: { entity_id: !input status_helper }
+                data: { option: idle }
 
-      # --- Start erkannt ---
+      # ---------------------------------------------------------
+      # Start erkannt → Status setzen + Start-Aktionen
+      # ---------------------------------------------------------
       - conditions:
           - condition: trigger
             id: start_detected
@@ -152,10 +135,8 @@ action:
             state: idle
         sequence:
           - service: input_select.select_option
-            target:
-              entity_id: !input status_helper
-            data:
-              option: running
+            target: { entity_id: !input status_helper }
+            data: { option: running }
 
           - choose:
               - conditions:
@@ -163,19 +144,22 @@ action:
                     value_template: "{{ (start_actions | length) > 0 }}"
                 sequence: !input start_actions
 
-      # --- Fertig erkannt ---
-      - conditions:
-          - condition: trigger
-            id: finish_detected
-          - condition: state
-            entity_id: !input status_helper
-            state: running
-        sequence:
+          # -----------------------------------------------------
+          # Jetzt robust auf das Ende warten (wie Original)
+          # -----------------------------------------------------
+          - wait_for_trigger:
+              - platform: numeric_state
+                entity_id: !input power_sensor
+                below: !input finish_threshold
+                for:
+                  minutes: !input finish_duration
+
+          # -----------------------------------------------------
+          # Fertig erkannt → Status setzen + Aktionen
+          # -----------------------------------------------------
           - service: input_select.select_option
-            target:
-              entity_id: !input status_helper
-            data:
-              option: finished
+            target: { entity_id: !input status_helper }
+            data: { option: finished }
 
           - choose:
               - conditions:
@@ -183,15 +167,10 @@ action:
                     value_template: "{{ (finish_actions | length) > 0 }}"
                 sequence: !input finish_actions
 
-      # --- Zurücksetzen auf idle ---
-      - conditions:
-          - condition: trigger
-            id: reset_idle
-        sequence:
+          # Automatisch zurück auf idle nach 2 Minuten
+          - delay: "00:02:00"
           - service: input_select.select_option
-            target:
-              entity_id: !input status_helper
-            data:
-              option: idle
+            target: { entity_id: !input status_helper }
+            data: { option: idle }
 
 mode: restart
